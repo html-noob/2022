@@ -1,4 +1,4 @@
-inp = '''$ cd /
+inp = """$ cd /
 $ ls
 dir bqc
 dir mwmlf
@@ -985,35 +985,188 @@ $ cd ..
 $ cd ..
 $ cd zdqprndl
 $ ls
-197398 tprth.gjn
-'''
-small_input = '''$ cd /
+197398 tprth.gjn"""
+small_input = """$ cd /
 $ ls
 dir bqc
-dir mwmlf
-dir ngn
-143562 nrwjb
 78449 qqvdcclf
-dir qrnm
-dir smfzmmhc
-116085 tvrms
-dir vrdrsj'''
+$ cd bqc
+$ ls
+5693 qqvdcclf"""
+import re
 
-sum_of_dirs_sizes = []
-list_of_lines = small_input.split('\n')
-whole_number = -1
+
+def print_struc(a_struct):
+    for key in a_struct:
+        print(key, "->", a_struct[key])
+
 
 def sum_numbers_in_list(list_of_lines):
     sum_of_list = 0
     space_index = -1
     for line in list_of_lines:
-        if (line[0].isnumeric()):
-            space_index = line.index(' ')
+        if line[0].isnumeric():
+            space_index = line.index(" ")
             if space_index != -1:
-                sum_of_list+=int((line[0:space_index]))
+                sum_of_list += int((line[0:space_index]))
     return sum_of_list
 
-print(sum_numbers_in_list(list_of_lines))
+
+def get_number_free_list(list_of_files):
+    number_free_list = []
+    for elem in list_of_files:
+        if not elem[0].isnumeric():
+            number_free_list.append(elem)
+    return number_free_list
 
 
+def get_sum_from_dir(dir_structure, dic_key):
+    for dict in dir_structure:
+        for key in dict:
+            if key == dic_key:
+                return dict[key]
 
+
+def add_sums_in_list(list_of_files):
+    if len(list_of_files) == 1:
+        return -1
+    tmp_sum = 0
+    for elem in list_of_files:
+        if elem[0:3] == "sum":
+            tmp_sum += int(elem[4 : len(elem)])
+        else:
+            return -1
+    return tmp_sum
+
+def recursive_add_sums(lst):
+    total = 0
+    for elem in lst:
+        if isinstance(elem, str):
+            space_index = -1
+            if elem[0].isnumeric():
+                space_index = elem.index(" ")
+            if space_index != -1:
+                total += int((elem[0:space_index]))
+        elif isinstance(elem, list):
+            total += recursive_add_sums(elem)
+    return total
+
+
+def find_sub_dir(dir_name, dir_structure):
+    for dict in dir_structure:
+        for key in dict:
+            if key == dir_name:
+                return dict[key]
+
+# this function checks is a directory has only sums, it adds them together
+def add_sums(dir_structure):
+    for dict in dir_structure:
+        for key in dict:
+            tmp_sum = 0
+            tmp_list = dict[key]
+
+            ans = add_sums_in_list(tmp_list)
+            if ans != -1:
+                formatted_ans = "sum:" + str(ans)
+                formatted_ans = formatted_ans.split(" ")
+                dict[key] = formatted_ans
+    return dir_structure
+
+
+def do_stuff():
+    inp_lines = inp.split("\n")
+    dir_structure = [{}]
+    tmp_list = []
+    tmp_key = ""
+    tmp_dic = {}
+    # skapa en dictionary
+    # nyckeln blir vad som kommer efter 'cd'
+    # value ska vara en lista som lägger till varje rad(förutom ls) tills den kommer till cd igen.
+    # när den når cd så ska hela listan läggas till som value. Efter det ska hela dictionary läggas till på stora listan
+    for i, line in enumerate(inp_lines):
+        if line[0:4] == "$ cd":
+            tmp_key = line[5 : len(line)]
+        elif line[0:4] != "$ ls":
+            tmp_list.append(line)
+            # om nästa rad är 'cd' eller om det är absolut sista raden, så lägg till listan som value till key:
+            if i + 1 != len(inp_lines):
+                tmp_str = inp_lines[i + 1]  # get the string next in loop
+                if tmp_str[0:4] == "$ cd":
+                    tmp_dic[tmp_key] = tmp_list
+                    dir_structure.append(tmp_dic)
+                    tmp_list = []
+                    tmp_dic = {}
+            if i == len(inp_lines) - 1:
+                tmp_dic[tmp_key] = tmp_list
+                dir_structure.append(tmp_dic)
+                tmp_list = []
+                tmp_dic = {}
+    dir_structure.pop(0)
+
+    #print_struc(dir_structure)
+
+    memory_stack = []
+    for index, dict in enumerate(dir_structure):
+        tmp_dict = dir_structure[index]
+        # hämta nyckeln:
+        for key in dict:
+            tmp_list = dict[key]
+            # loop through list. If element is directory:
+            # find that directory by going to next dictionary in list and check if that is the one.
+            for indec, elem in enumerate(tmp_list):
+                if elem[0:3] == "dir":
+                    memory_stack.append(elem[4 : len(elem)])
+                    #print("what am I trying to replace?" + str(tmp_list[indec]))
+                    tmp_list[indec] = replace_dir_with_list(index, dir_structure, memory_stack)
+
+    
+
+    for dict in dir_structure:
+        for key in dict:
+            tmp_list = dict[key]
+            dict[key] = recursive_add_sums(tmp_list)
+            break
+
+    slutsumma = 0
+    for dict in dir_structure:
+        for key in dict:
+            if dict[key] <= 100000:
+                slutsumma += dict[key]
+    print(slutsumma)
+    return dir_structure
+
+def replace_dir_with_list(index, dir_structure, memory_stack):
+    for i in range(index + 1, len(dir_structure)):
+        tmp_dict = dir_structure[i]
+        for key in tmp_dict:
+            if key == memory_stack[len(memory_stack) - 1]:
+                memory_stack.pop()
+                return tmp_dict[key]
+
+    # for dict in dir_structure:
+    #    print(dict)
+    print(
+        "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+    )
+    print(
+        "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+    )
+    print(
+        "||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||"
+    )
+
+    return dir_structure
+
+
+def print_struc(dir_structure):
+    for dict in dir_structure:
+        print(dict)
+    print("||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||")
+
+
+x = do_stuff()
+print_struc(x)
+#print(x[0])
+
+
+# print(dir_structure)
